@@ -89,3 +89,32 @@ CREATE INDEX idx_organizations_slug ON organizations (slug);
 CREATE INDEX idx_states_slug ON states (slug);
 CREATE INDEX idx_categories_slug ON categories (slug);
 CREATE INDEX idx_qualifications_slug ON qualifications (slug);
+
+INSERT INTO organizations (name, slug, description, website_url) VALUES
+('SSC', 'ssc', 'Staff Selection Commission', 'https://ssc.nic.in'),
+('UPSC', 'upsc', 'Union Public Service Commission', 'https://upsc.gov.in'),
+('IBPS', 'ibps', 'Institute of Banking Personnel Selection', 'https://ibps.in'),
+('RRB', 'rrb', 'Railway Recruitment Boards', 'https://indianrailways.gov.in'),
+('MP Police', 'mp-police', 'Madhya Pradesh Police', 'https://example.com/mp-police');
+
+INSERT INTO states (name, slug) VALUES
+('All India', 'all-india'),
+('Madhya Pradesh', 'madhya-pradesh'),
+('Uttar Pradesh', 'uttar-pradesh'),
+('Bihar', 'bihar'),
+('Rajasthan', 'rajasthan');
+
+INSERT INTO categories (name, slug) VALUES
+('Central Government', 'central-government'),
+('Banking', 'banking'),
+('Railway', 'railway'),
+('Police', 'police'),
+('State Government', 'state-government');
+
+INSERT INTO qualifications (name, slug) VALUES
+('Graduate', 'graduate'),
+('12th', '12th'),
+('Diploma', 'diploma'),
+('ITI', 'iti'),
+('B.Tech', 'btech');
+

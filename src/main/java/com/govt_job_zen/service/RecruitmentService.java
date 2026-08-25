@@ -93,13 +93,10 @@ public class RecruitmentService {
 
         Set<Category> categories = new HashSet<>();
         for (String categoryName : categoryNames) {
-            if (categoryName == null || categoryName.isBlank()) {
-                continue;
+            Category category = resolveCategory(categoryName);
+            if (category != null) {
+                categories.add(category);
             }
-
-            Category category = categoryRepository.findByNameIgnoreCase(categoryName)
-                    .orElseGet(() -> categoryRepository.save(new Category(categoryName, slugify(categoryName))));
-            categories.add(category);
         }
         return categories;
     }
@@ -111,15 +108,58 @@ public class RecruitmentService {
 
         Set<Qualification> qualifications = new HashSet<>();
         for (String qualificationName : qualificationNames) {
-            if (qualificationName == null || qualificationName.isBlank()) {
-                continue;
+            Qualification qualification = resolveQualification(qualificationName);
+            if (qualification != null) {
+                qualifications.add(qualification);
             }
-
-            Qualification qualification = qualificationRepository.findByNameIgnoreCase(qualificationName)
-                    .orElseGet(() -> qualificationRepository.save(new Qualification(qualificationName, slugify(qualificationName))));
-            qualifications.add(qualification);
         }
         return qualifications;
+    }
+
+    private Category resolveCategory(String categoryName) {
+        if (categoryName == null || categoryName.isBlank()) {
+            return null;
+        }
+
+        String cleaned = categoryName.trim();
+        String slug = slugify(cleaned);
+        String displayName = displayNameFromInput(cleaned);
+
+        return categoryRepository.findBySlug(slug)
+                .or(() -> categoryRepository.findByNameIgnoreCase(cleaned))
+                .or(() -> categoryRepository.findByNameIgnoreCase(displayName))
+                .orElseGet(() -> categoryRepository.save(new Category(displayName, slug)));
+    }
+
+    private Qualification resolveQualification(String qualificationName) {
+        if (qualificationName == null || qualificationName.isBlank()) {
+            return null;
+        }
+
+        String cleaned = qualificationName.trim();
+        String slug = slugify(cleaned);
+        String displayName = displayNameFromInput(cleaned);
+
+        return qualificationRepository.findBySlug(slug)
+                .or(() -> qualificationRepository.findByNameIgnoreCase(cleaned))
+                .or(() -> qualificationRepository.findByNameIgnoreCase(displayName))
+                .orElseGet(() -> qualificationRepository.save(new Qualification(displayName, slug)));
+    }
+
+    private String displayNameFromInput(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+
+        String normalized = value.trim();
+        if (normalized.contains("-")) {
+            return Arrays.stream(normalized.split("-"))
+                    .filter(part -> !part.isBlank())
+                    .map(part -> part.substring(0, 1).toUpperCase(Locale.ROOT) + part.substring(1).toLowerCase(Locale.ROOT))
+                    .collect(Collectors.joining(" "));
+        }
+
+        return normalized.substring(0, 1).toUpperCase(Locale.ROOT) + normalized.substring(1);
     }
 
     private String slugify(String value) {
