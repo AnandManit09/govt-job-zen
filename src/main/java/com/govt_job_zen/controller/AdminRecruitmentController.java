@@ -23,4 +23,29 @@ public class AdminRecruitmentController {
         RecruitmentResponse response = recruitmentService.createRecruitment(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @GetMapping("/recruitments")
+    public ResponseEntity<java.util.List<RecruitmentResponse>> list(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(recruitmentService.getRecruitments(page, size));
+    }
+
+    @GetMapping("/recruitments/{id}")
+    public ResponseEntity<RecruitmentResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(recruitmentService.getRecruitmentById(id));
+    }
+
+    @PutMapping("/recruitments/{id}")
+    public ResponseEntity<RecruitmentResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody RecruitmentRequest request) {
+        return ResponseEntity.ok(recruitmentService.updateRecruitment(id, request));
+    }
+
+    @DeleteMapping("/recruitments/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        recruitmentService.deleteRecruitment(id);
+        return ResponseEntity.noContent().build();
+    }
 }

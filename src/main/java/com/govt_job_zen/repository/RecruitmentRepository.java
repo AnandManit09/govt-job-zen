@@ -9,5 +9,9 @@ import java.util.Optional;
 
 public interface RecruitmentRepository extends JpaRepository<Recruitment, Long> {
     Optional<Recruitment> findBySlug(String slug);
+    Optional<Recruitment> findBySlugAndPublishedTrue(String slug);
     List<Recruitment> findByPublishedTrueOrderByPublishedAtDesc(Pageable pageable);
+    List<Recruitment> findByPublishedTrueAndState_SlugOrderByPublishedAtDesc(String stateSlug, Pageable pageable);
+    List<Recruitment> findByPublishedTrueAndCategories_SlugOrderByPublishedAtDesc(String categorySlug, Pageable pageable);
+    List<Recruitment> findByPublishedTrueAndState_SlugAndCategories_SlugOrderByPublishedAtDesc(String stateSlug, String categorySlug, Pageable pageable);
 }

@@ -1,12 +1,17 @@
 package com.govt_job_zen.service;
 
 import com.govt_job_zen.domain.*;
+import com.govt_job_zen.dto.CategoryResponse;
 import com.govt_job_zen.dto.RecruitmentRequest;
 import com.govt_job_zen.dto.RecruitmentResponse;
+import com.govt_job_zen.dto.StateResponse;
 import com.govt_job_zen.repository.*;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -80,10 +85,142 @@ public class RecruitmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<RecruitmentResponse> getLatestRecruitments(int limit) {
-        return recruitmentRepository.findByPublishedTrueOrderByPublishedAtDesc(PageRequest.of(0, limit)).stream()
+    public RecruitmentResponse getRecruitmentById(Long id) {
+        Recruitment recruitment = recruitmentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recruitment not found with id: " + id));
+        return toResponse(recruitment);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecruitmentResponse> getRecruitments(int page, int size) {
+        return recruitmentRepository.findAll(PageRequest.of(page, size)).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public RecruitmentResponse getPublicRecruitmentBySlug(String slug) {
+        Recruitment recruitment = recruitmentRepository.findBySlugAndPublishedTrue(slug)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recruitment not found for slug: " + slug));
+        return toResponse(recruitment);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CategoryResponse> getPublicCategories() {
+        return categoryRepository.findAll(Sort.by("name").ascending()).stream()
+                .map(this::toCategoryResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<StateResponse> getPublicStates() {
+        return stateRepository.findAll(Sort.by("name").ascending()).stream()
+                .map(this::toStateResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecruitmentResponse> getPublicRecruitments(String state, String category, int limit) {
+        int normalizedLimit = Math.max(limit, 1);
+        String normalizedState = state == null ? null : state.trim();
+        String normalizedCategory = category == null ? null : category.trim();
+
+        if ((normalizedState == null || normalizedState.isBlank()) && (normalizedCategory == null || normalizedCategory.isBlank())) {
+            return getLatestRecruitments(normalizedLimit);
+        }
+
+        if (normalizedState != null && !normalizedState.isBlank() && normalizedCategory != null && !normalizedCategory.isBlank()) {
+            return recruitmentRepository.findByPublishedTrueAndState_SlugAndCategories_SlugOrderByPublishedAtDesc(
+                    normalizedState,
+                    normalizedCategory,
+                    PageRequest.of(0, normalizedLimit)
+            ).stream().map(this::toResponse).collect(Collectors.toList());
+        }
+
+        if (normalizedCategory != null && !normalizedCategory.isBlank()) {
+            return recruitmentRepository.findByPublishedTrueAndCategories_SlugOrderByPublishedAtDesc(
+                    normalizedCategory,
+                    PageRequest.of(0, normalizedLimit)
+            ).stream().map(this::toResponse).collect(Collectors.toList());
+        }
+
+        return recruitmentRepository.findByPublishedTrueAndState_SlugOrderByPublishedAtDesc(
+                normalizedState,
+                PageRequest.of(0, normalizedLimit)
+        ).stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecruitmentResponse> getLatestRecruitments(int limit) {
+        int normalizedLimit = Math.max(limit, 1);
+        return recruitmentRepository.findByPublishedTrueOrderByPublishedAtDesc(PageRequest.of(0, normalizedLimit)).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public RecruitmentResponse updateRecruitment(Long id, RecruitmentRequest request) {
+        Recruitment existing = recruitmentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recruitment not found with id: " + id));
+
+        String normalizedSlug = slugify(request.getSlug() != null && !request.getSlug().isBlank()
+                ? request.getSlug()
+                : existing.getSlug());
+
+        recruitmentRepository.findBySlug(normalizedSlug)
+                .filter(candidate -> !candidate.getId().equals(id))
+                .ifPresent(candidate -> {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Recruitment slug already exists: " + normalizedSlug);
+                });
+
+        Organization organization = organizationRepository.findByNameIgnoreCase(request.getOrganizationName())
+                .orElseGet(() -> organizationRepository.save(new Organization(request.getOrganizationName(), slugify(request.getOrganizationName()))));
+
+        State state = null;
+        if (request.getStateName() != null && !request.getStateName().isBlank()) {
+            state = stateRepository.findByNameIgnoreCase(request.getStateName())
+                    .orElseGet(() -> stateRepository.save(new State(request.getStateName(), slugify(request.getStateName()))));
+        }
+
+        existing.setTitle(request.getTitle());
+        existing.setSlug(normalizedSlug);
+        existing.setOrganization(organization);
+        existing.setState(state);
+        existing.setDescription(request.getDescription());
+        existing.setNotificationDate(request.getNotificationDate());
+        existing.setApplicationStartDate(request.getApplicationStartDate());
+        existing.setApplicationEndDate(request.getApplicationEndDate());
+        existing.setVacancies(request.getVacancies());
+        existing.setQualificationDetails(request.getQualificationDetails());
+        existing.setAgeLimit(request.getAgeLimit());
+        existing.setSalary(request.getSalary());
+        existing.setApplicationFee(request.getApplicationFee());
+        existing.setSelectionProcess(request.getSelectionProcess());
+        existing.setOfficialNotificationUrl(request.getOfficialNotificationUrl());
+        existing.setOfficialWebsiteUrl(request.getOfficialWebsiteUrl());
+        existing.setApplyUrl(request.getApplyUrl());
+        existing.setStatus(request.getStatus() == null ? RecruitmentStatus.UPCOMING : request.getStatus());
+        existing.setPublished(request.isPublished());
+        existing.setFeatured(request.isFeatured());
+        existing.setCategories(resolveCategories(request.getCategoryNames()));
+        existing.setQualifications(resolveQualifications(request.getQualificationNames()));
+
+        if (request.isPublished() && existing.getPublishedAt() == null) {
+            existing.setPublishedAt(LocalDateTime.now());
+        }
+        if (!request.isPublished()) {
+            existing.setPublishedAt(null);
+        }
+
+        Recruitment saved = recruitmentRepository.save(existing);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public void deleteRecruitment(Long id) {
+        Recruitment recruitment = recruitmentRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Recruitment not found with id: " + id));
+        recruitmentRepository.delete(recruitment);
     }
 
     private Set<Category> resolveCategories(Set<String> categoryNames) {
@@ -169,6 +306,22 @@ public class RecruitmentService {
         return value.trim().toLowerCase(Locale.ROOT)
                 .replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("^-|-$", "");
+    }
+
+    private CategoryResponse toCategoryResponse(Category category) {
+        CategoryResponse response = new CategoryResponse();
+        response.setId(category.getId());
+        response.setName(category.getName());
+        response.setSlug(category.getSlug());
+        return response;
+    }
+
+    private StateResponse toStateResponse(State state) {
+        StateResponse response = new StateResponse();
+        response.setId(state.getId());
+        response.setName(state.getName());
+        response.setSlug(state.getSlug());
+        return response;
     }
 
     private RecruitmentResponse toResponse(Recruitment recruitment) {
