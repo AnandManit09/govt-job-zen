@@ -1,0 +1,18 @@
+.git
+.gitignore
+.idea
+.vscode
+.github
+.DS_Store
+*.iml
+
+# build artifacts
+/target
+**/target
+
+# local env files
+.env
+.env.*
+
+# docs and generated artifacts that are not needed for runtime
+/docs

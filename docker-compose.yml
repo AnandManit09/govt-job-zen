@@ -1,0 +1,32 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: govt-job-zen-app
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/govt_job_zen
+      SPRING_DATASOURCE_USERNAME: myapp_user
+      SPRING_DATASOURCE_PASSWORD: myapp_password
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    container_name: govt-job-zen-db
+    environment:
+      POSTGRES_DB: govt_job_zen
+      POSTGRES_USER: myapp_user
+      POSTGRES_PASSWORD: myapp_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
