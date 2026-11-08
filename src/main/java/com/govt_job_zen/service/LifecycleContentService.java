@@ -10,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,7 +38,7 @@ public class LifecycleContentService {
     public List<RecruitmentResultResponse> getPublishedResultsForRecruitmentSlug(String recruitmentSlug) {
         List<RecruitmentResult> records = recruitmentResultRepository.findByRecruitment_SlugAndPublishedTrueOrderByPublishedAtDesc(recruitmentSlug);
         if (records.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No published results found for slug: " + recruitmentSlug);
+            return Collections.emptyList();
         }
         return records.stream().map(this::toResultResponse).collect(Collectors.toList());
     }
@@ -46,7 +47,7 @@ public class LifecycleContentService {
     public List<RecruitmentAdmitCardResponse> getPublishedAdmitCardsForRecruitmentSlug(String recruitmentSlug) {
         List<RecruitmentAdmitCard> records = recruitmentAdmitCardRepository.findByRecruitment_SlugAndPublishedTrueOrderByPublishedAtDesc(recruitmentSlug);
         if (records.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No published admit cards found for slug: " + recruitmentSlug);
+            return Collections.emptyList();
         }
         return records.stream().map(this::toAdmitCardResponse).collect(Collectors.toList());
     }
@@ -55,7 +56,7 @@ public class LifecycleContentService {
     public List<RecruitmentAnswerKeyResponse> getPublishedAnswerKeysForRecruitmentSlug(String recruitmentSlug) {
         List<RecruitmentAnswerKey> records = recruitmentAnswerKeyRepository.findByRecruitment_SlugAndPublishedTrueOrderByPublishedAtDesc(recruitmentSlug);
         if (records.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No published answer keys found for slug: " + recruitmentSlug);
+            return Collections.emptyList();
         }
         return records.stream().map(this::toAnswerKeyResponse).collect(Collectors.toList());
     }

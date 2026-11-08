@@ -1,9 +1,14 @@
 package com.govt_job_zen;
 
 import com.govt_job_zen.controller.LifecycleContentController;
+import com.govt_job_zen.domain.Recruitment;
 import com.govt_job_zen.dto.RecruitmentAdmitCardResponse;
 import com.govt_job_zen.dto.RecruitmentAnswerKeyResponse;
 import com.govt_job_zen.dto.RecruitmentResultResponse;
+import com.govt_job_zen.repository.RecruitmentAdmitCardRepository;
+import com.govt_job_zen.repository.RecruitmentAnswerKeyRepository;
+import com.govt_job_zen.repository.RecruitmentRepository;
+import com.govt_job_zen.repository.RecruitmentResultRepository;
 import com.govt_job_zen.service.LifecycleContentService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +20,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -48,12 +55,26 @@ class LifecycleContentIntegrationTest {
     }
 
     @Test
-    void publicCannotFetchUnpublishedLifecycleRecords() throws Exception {
-        when(lifecycleContentService.getPublishedAnswerKeysForRecruitmentSlug("ssc-cgl-2026"))
-                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "No published answer keys found for slug: ssc-cgl-2026"));
+    void publicReceivesEmptyLifecycleListWhenNoPublishedRecordsExist() {
+        RecruitmentResultRepository resultRepository = Mockito.mock(RecruitmentResultRepository.class);
+        RecruitmentAdmitCardRepository admitCardRepository = Mockito.mock(RecruitmentAdmitCardRepository.class);
+        RecruitmentAnswerKeyRepository answerKeyRepository = Mockito.mock(RecruitmentAnswerKeyRepository.class);
+        RecruitmentRepository recruitmentRepository = Mockito.mock(RecruitmentRepository.class);
 
-        mockMvc.perform(get("/api/public/recruitments/{slug}/answer-keys", "ssc-cgl-2026"))
-                .andExpect(status().isNotFound());
+        when(resultRepository.findByRecruitment_SlugAndPublishedTrueOrderByPublishedAtDesc("ssc-cgl-2026"))
+                .thenReturn(List.of());
+
+        LifecycleContentService service = new LifecycleContentService(
+                resultRepository,
+                admitCardRepository,
+                answerKeyRepository,
+                recruitmentRepository
+        );
+
+        assertDoesNotThrow(() -> {
+            List<RecruitmentResultResponse> results = service.getPublishedResultsForRecruitmentSlug("ssc-cgl-2026");
+            assertTrue(results.isEmpty());
+        });
     }
 
     @Test
